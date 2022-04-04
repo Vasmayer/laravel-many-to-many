@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Post;
 use App\Models\Category;
+use App\Models\Tag;
 
 class PostController extends Controller
 {
@@ -28,7 +29,8 @@ class PostController extends Controller
     public function create()
     {
         $categories = Category::all();
-        return view('admin.posts.create',compact('categories'));
+        $tags = Tag::all();
+        return view('admin.posts.create',compact('categories','tags'));
     }
 
     /**
@@ -43,16 +45,20 @@ class PostController extends Controller
             'title' => 'required|min:5|max:50',
             'image' => 'url|max:255|nullable',
             'description' => 'required|min:5',
-            'category_id' => 'nullable|exists:categories,id'
+            'category_id' => 'nullable|exists:categories,id',
+            'tags' => 'nullable|exists:tags,id'
         ],[
             'required'=>':attribute il campo è obbligatorio',
             'image.url'=>'l \'url dell \'immagine è sbagliato',
-            'description.min'=>'Cè una lunghezza minima di caratteri per la descrizione'
+            'description.min'=>'Cè una lunghezza minima di caratteri per la descrizione',
+            'tags.exists' => 'uno dei tag selezionati non è valido'
         ]);
 
         $data = $request->all(); 
         $post  = Post::create($data);
         
+        if(array_key_exists('tags',$data)) $post->tags()->attach($data['tags']);
+
         return redirect()->route('admin.posts.show',$post->id);
     }
 
@@ -76,8 +82,10 @@ class PostController extends Controller
     public function edit(Post $post)
     {
         $categories = Category::all();
+        $tags = Tag::all();
+        $post_tag_ids =  $post->tags->pluck('id')->toArray();
 
-        return view('admin.posts.edit',compact('post','categories'));
+        return view('admin.posts.edit',compact('post','categories','tags','post_tag_ids'));
     }
 
     /**
@@ -92,15 +100,26 @@ class PostController extends Controller
         $request->validate([
             'title' => 'required|min:5|max:50',
             'image' => 'url|max:255|nullable',
-            'description' => 'required|min:5'
+            'description' => 'required|min:5',
+            'tags' => 'nullable|exists:tags,id'
         ],[
             'required'=>':attribute il campo è obbligatorio',
             'image.url'=>'l \'url dell \'immagine è sbagliato',
-            'description.min'=>'Cè una lunghezza minima di caratteri per la descrizione'
+            'description.min'=>'Cè una lunghezza minima di caratteri per la descrizione',
+            'tags.exists' => 'uno dei tag selezionati non è valido'
         ]);
 
         $data = $request->all(); 
         $post->update($data);
+
+        if(!array_key_exists('tags',$data))
+        {
+            $post->tags()->detach();
+        }
+        else
+        {
+            $post->tags()->sync($data['tags']);
+        }
         
         return redirect()->route('admin.posts.index');
     }
