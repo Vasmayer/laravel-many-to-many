@@ -7,6 +7,10 @@ use Illuminate\Http\Request;
 use App\Models\Post;
 use App\Models\Category;
 use App\Models\Tag;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\PublishedPostMail;
 
 class PostController extends Controller
 {
@@ -43,7 +47,7 @@ class PostController extends Controller
     {
         $request->validate([
             'title' => 'required|min:5|max:50',
-            'image' => 'url|max:255|nullable',
+            'image' => 'nullable|image',
             'description' => 'required|min:5',
             'category_id' => 'nullable|exists:categories,id',
             'tags' => 'nullable|exists:tags,id'
@@ -55,10 +59,22 @@ class PostController extends Controller
         ]);
 
         $data = $request->all(); 
+
+        if(array_key_exists('image',$data))
+        {
+           $img_url = Storage::put('post_images',$data['image']);
+           $data['image'] = $img_url;
+        }
+        
         $post  = Post::create($data);
+
         
         if(array_key_exists('tags',$data)) $post->tags()->attach($data['tags']);
 
+        $mail = new PublishedPostMail();
+
+
+        Mail::to(Auth::user()->email)->send($mail);
         return redirect()->route('admin.posts.show',$post->id);
     }
 
@@ -99,7 +115,7 @@ class PostController extends Controller
     {
         $request->validate([
             'title' => 'required|min:5|max:50',
-            'image' => 'url|max:255|nullable',
+            'image' => 'nullable|image',
             'description' => 'required|min:5',
             'tags' => 'nullable|exists:tags,id'
         ],[
@@ -110,6 +126,11 @@ class PostController extends Controller
         ]);
 
         $data = $request->all(); 
+        if(array_key_exists('image',$data))
+        {
+           $img_url = Storage::put('post_images',$data['image']);
+           $data['image'] = $img_url;
+        }
         $post->update($data);
 
         if(!array_key_exists('tags',$data))
@@ -134,6 +155,10 @@ class PostController extends Controller
     {
         $post->delete();
 
+        if($post->image)
+        {
+            Storage::delete($post->image);
+        }
         return redirect()->route('admin.posts.index');
     }
 }

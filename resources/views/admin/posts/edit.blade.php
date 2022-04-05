@@ -2,7 +2,7 @@
 
 @section('content')
 <div class="container">
-    <form action="{{ route('admin.posts.update',$post->id) }}" method="POST">
+    <form action="{{ route('admin.posts.update',$post->id) }}" method="POST" enctype="multipart/form-data">
         @csrf
         @method('PUT')
         <div class="form-group">
@@ -11,7 +11,7 @@
         </div>
         <div class="form-group">
           <label for="image">Immagine</label>
-          <input type="text" class="form-control" id="image" name="image" value="{{$post->image}}">
+          <input type="file" class="form-control-file" id="image" name="image">
         </div>
         <div class="form-group">
             <label for="description">Descrizione</label>
